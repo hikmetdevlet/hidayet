@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>İlişki Takip</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script><style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F1EA;--surface:#FFFFFF;--surface2:#EDEAD3;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#1A1810;--text2:#6A6358;--text3:#A09880;
+  --green:#2D6A4F;--green-l:#D4EDDF;--green-m:#74C69D;
+  --amber:#7A5018;--amber-l:#FBE8CC;
+  --red:#8B1E22;--red-l:#FBDCDD;
+  --blue:#183F6E;--blue-l:#DCE9F8;
+  --purple:#3E2578;--purple-l:#EAE2FC;
+  --teal:#0C5E5E;--teal-l:#D8F0EF;
+  --r:12px;--rs:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.04);
+}
+html,body{height:100%;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.app{display:flex;flex-direction:column;height:100vh;max-width:540px;margin:0 auto}
+.auth-bar{background:var(--green-l);border-bottom:1px solid var(--green-m);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.auth-bar-text{font-size:12px;color:var(--green);font-weight:500}
+#btn-signin{padding:6px 14px;border-radius:8px;background:var(--green);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500}
+#user-bar{display:none;align-items:center;gap:8px}
+.u-avatar{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.u-name{font-size:12px;color:var(--green);font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#btn-signout{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:'DM Sans',sans-serif}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px 10px;flex-shrink:0;box-shadow:var(--shadow)}
+.topbar h1{font-family:'Lora',Georgia,serif;font-size:19px;font-weight:600;color:var(--text)}
+.topbar p{font-size:11px;color:var(--text3);margin-top:2px}
+.scroll-area{flex:1;overflow-y:auto;padding:14px 14px 100px;-webkit-overflow-scrolling:touch}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:540px;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:50;box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 10px;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:'DM Sans',sans-serif;font-size:9.5px;gap:3px;transition:color .15s;-webkit-tap-highlight-color:transparent}
+.nav-item.active{color:var(--green)}
+.nav-icon{font-size:19px;line-height:1}
+.section{display:none}.section.active{display:block}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:11px 8px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:24px;font-weight:500;line-height:1}
+.stat-l{font-size:10px;color:var(--text3);margin-top:3px}
+.banner{border-radius:var(--rs);padding:9px 12px;margin-bottom:8px;font-size:13px;font-weight:500}
+.banner.red{background:var(--red-l);color:var(--red)}.banner.amber{background:var(--amber-l);color:var(--amber)}.banner.green{background:var(--green-l);color:var(--green)}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.tag.green{background:var(--green-l);color:var(--green)}.tag.amber{background:var(--amber-l);color:var(--amber)}.tag.red{background:var(--red-l);color:var(--red)}.tag.blue{background:var(--blue-l);color:var(--blue)}.tag.purple{background:var(--purple-l);color:var(--purple)}.tag.teal{background:var(--teal-l);color:var(--teal)}.tag.gray{background:var(--surface2);color:var(--text2)}
+.btn{padding:8px 15px;border-radius:var(--rs);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);transition:background .12s,transform .08s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.97)}.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--green);color:#fff;border-color:transparent}.btn.primary:hover{background:#245840}
+.btn.danger{background:var(--red-l);color:var(--red);border-color:transparent}
+.btn.sm{padding:5px 11px;font-size:12px}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+input[type=text],input[type=date],input[type=tel],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--rs);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surface);outline:none;transition:border .12s;appearance:none;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(45,106,79,.12)}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23A09880' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prog-track{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:5px 0}
+.prog-fill{height:5px;border-radius:3px;transition:width .3s}
+.person-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);border-left-width:3px}
+.person-card.ok{border-left-color:var(--border)}.person-card.warn{border-left-color:var(--amber)}.person-card.overdue{border-left-color:var(--red)}
+.ph{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+.pname{font-size:15px;font-weight:500;color:var(--text)}
+.pmeta{font-size:12px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pnotes{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:7px}
+.call-note-box{background:var(--teal-l);border-radius:6px;padding:7px 10px;margin-bottom:7px;font-size:12px;color:var(--teal)}
+.prog-label{font-size:11px;color:var(--text3);margin-bottom:1px}
+.visit-info{font-size:11px;color:var(--text3);margin-top:5px}
+.r-item{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}
+.r-item:last-child{border-bottom:none}
+.r-icon{width:34px;height:34px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.r-body{flex:1;min-width:0}
+.r-title{font-size:13px;font-weight:500;color:var(--text)}
+.r-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.r-date{font-size:11px;color:var(--text3);margin-top:2px}
+.visit-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.visit-card-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.visit-card-name{font-size:14px;font-weight:500;color:var(--text)}
+.visit-card-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.visit-card-note{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:6px}
+.gift-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.gift-tag{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--purple-l);color:var(--purple);font-weight:500}
+.next-visit-box{background:var(--amber-l);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--amber);margin-top:6px}
+.v-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px}
+.i-item{border-left:3px solid var(--green-m);padding:10px 12px;margin-bottom:9px;background:var(--surface2);border-radius:0 var(--rs) var(--rs) 0}
+.i-arabic{font-size:16px;direction:rtl;text-align:right;margin-bottom:5px;font-family:'Lora',Georgia,serif;color:var(--text);line-height:1.6}
+.i-tr{font-size:13px;color:var(--text);line-height:1.6}
+.i-usage{font-size:11px;color:var(--green);margin-top:5px;font-weight:500}
+.person-checks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pcheck{font-size:12px;cursor:pointer;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);transition:all .12s;user-select:none}
+.pcheck.done{background:var(--green-l);border-color:var(--green-m);color:var(--green)}
+.tracker-label{font-size:11px;color:var(--text3);margin-top:10px;border-top:1px solid var(--border);padding-top:8px;margin-bottom:5px}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.chip{padding:5px 13px;border-radius:20px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text2);white-space:nowrap;transition:all .12s}
+.chip.active{background:var(--green-l);color:var(--green);border-color:var(--green-m);font-weight:500}
+.search-wrap{position:relative;margin-bottom:10px}
+.search-wrap input{padding-left:34px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;opacity:.5}
+.slabel{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 7px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:0 18px 30px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;animation:slideUp .22s ease}
+@keyframes slideUp{from{transform:translateY(60px);opacity:.5}to{transform:translateY(0);opacity:1}}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:12px auto 16px}
+.sheet-title{font-family:'Lora',Georgia,serif;font-size:17px;font-weight:600;color:var(--text);margin-bottom:16px}
+.sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-bottom:6px}
+.fpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+.fpick-opt,.gift-opt{padding:6px 12px;border-radius:20px;border:1px solid var(--border2);cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text2);transition:all .12s}
+.fpick-opt.sel{background:var(--green-l);border-color:var(--green-m);color:var(--green);font-weight:500}
+.gift-pick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+.gift-opt.sel{background:var(--purple-l);border-color:var(--purple);color:var(--purple);font-weight:500}
+.empty{text-align:center;padding:24px;color:var(--text3);font-size:13px}
+.step{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}
+.step:last-child{border-bottom:none}
+.step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.step-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px}
+.step-sub{font-size:12px;color:var(--text2);line-height:1.5}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.page-h-title{font-family:'Lora',Georgia,serif;font-size:17px;font-weight:600;color:var(--text)}
+.islamic-card-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.ic-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.del-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px;border-radius:4px}
+.del-btn:hover{color:var(--red);background:var(--red-l)}
+.ik-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px}
+.ik-tab{flex:1;padding:10px 8px;font-size:12px;font-family:'DM Sans',sans-serif;border:none;background:transparent;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s}
+.ik-tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500;background:var(--green-l)}
+.matrix-wrap{overflow-x:auto;margin-bottom:10px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface)}
+.matrix-table{border-collapse:collapse;width:100%;min-width:300px}
+.matrix-table th{background:var(--surface2);padding:8px 10px;font-size:11px;font-weight:500;color:var(--text2);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.matrix-table th.person-col{text-align:center;font-size:10px}
+.matrix-table td{padding:8px 10px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.matrix-table td.person-cell{text-align:center}
+.matrix-table tr:last-child td{border-bottom:none}
+.matrix-check{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;background:var(--surface)}
+.matrix-check.done{background:var(--green-l);border-color:var(--green-m);color:var(--green)}
+.item-title-text{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block}
+.matrix-progress{font-size:10px;color:var(--text3);white-space:nowrap}
+.yasin-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:var(--surface);border-radius:var(--r);padding:10px 14px;border:1px solid var(--border)}
+.yasin-month-label{font-family:'Lora',Georgia,serif;font-size:15px;font-weight:600;color:var(--text)}
+.yasin-month-btn{background:none;border:1px solid var(--border2);border-radius:var(--rs);padding:5px 12px;cursor:pointer;font-size:14px;color:var(--text2)}
+.yasin-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.yasin-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;text-align:center}
+.yasin-stat-n{font-size:22px;font-weight:500;line-height:1}
+.yasin-stat-l{font-size:10px;color:var(--text3);margin-top:3px}
+.yasin-person-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;border-left-width:3px}
+.yasin-person-card.done-card{border-left-color:var(--green)}.yasin-person-card.pending-card{border-left-color:var(--border)}
+.yasin-person-info{flex:1}
+.yasin-person-name{font-size:14px;font-weight:500;color:var(--text)}
+.yasin-person-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.yasin-person-date{font-size:11px;color:var(--green);margin-top:3px;font-weight:500}
+.yasin-check-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--border2);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:all .15s}
+.yasin-check-btn.checked{background:var(--green-l);border-color:var(--green-m)}
+.semt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.semt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:all .15s;position:relative}
+.semt-card.active-semt{border-color:var(--green);background:var(--green-l);border-width:2px}
+.semt-name{font-size:14px;font-weight:500;color:var(--text)}
+.semt-count{font-size:11px;color:var(--text3);margin-top:3px}
+.semt-urgency{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%}
+.semt-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.semt-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.semt-person-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.semt-person-row:last-child{border-bottom:none}
+.semt-person-info{flex:1}
+.semt-person-name{font-size:13px;font-weight:500;color:var(--text)}
+.semt-person-addr{font-size:11px;color:var(--text3);margin-top:2px}
+.semt-person-visit{font-size:11px;margin-top:3px}
+.semt-tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--blue-l);color:var(--blue);font-weight:500}
+@media(min-width:541px){.app{box-shadow:0 0 40px rgba(0,0,0,.08)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="auth-bar">
+    <div class="auth-bar-text" id="auth-bar-text">&#x2601; Verilerini buluta kaydet</div>
+    <button id="btn-signin">&#x1F511; Google ile giriş yap</button>
+    <div id="user-bar">
+      <div class="sync-dot"></div>
+      <div class="u-avatar" id="u-avatar">?</div>
+      <div class="u-name" id="u-name"></div>
+      <button id="btn-signout">Çıkış</button>
+    </div>
+  </div>
+  <div class="topbar">
+    <h1 id="page-title">Kişiler</h1>
+    <p>kardeşlikle kurulan bağların sistemi</p>
+  </div>
+  <div class="scroll-area">
+    <div class="section active" id="sec-kisiler">
+      <div class="stats-row">
+        <div class="stat"><div class="stat-n" id="st-total">0</div><div class="stat-l">Toplam kişi</div></div>
+        <div class="stat"><div class="stat-n" id="st-overdue" style="color:var(--red)">0</div><div class="stat-l">Arama gecikmesi</div></div>
+        <div class="stat"><div class="stat-n" id="st-visit" style="color:var(--amber)">0</div><div class="stat-l">Ziyaret gecikmesi</div></div>
+      </div>
+      <div id="overdue-banners"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="search-wrap" style="flex:1;margin-bottom:0"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="Kişi ara..." oninput="renderPersons()"></div>
+        <button class="btn primary" onclick="openModal('modal-person')">+ Ekle</button>
+      </div>
+      <div class="filter-row">
+        <button class="chip active" onclick="setFilter('tumu',this)">Tümü</button>
+        <button class="chip" onclick="setFilter('aramaGerekli',this)">Arama gerekli</button>
+        <button class="chip" onclick="setFilter('ziyaretGerekli',this)">Ziyaret gerekli</button>
+        <button class="chip" onclick="setFilter('yeni',this)">Yeni tanışma</button>
+      </div>
+      <div id="person-list"></div>
+    </div>
+    <div class="section" id="sec-hatirlatici">
+      <div class="page-header"><div class="page-h-title">Hatırlatıcılar</div><button class="btn primary sm" onclick="openModal('modal-reminder')">+ Ekle</button></div>
+      <div class="slabel">📞 Gecikmiş aramalar</div><div class="card" id="auto-remind-box"></div>
+      <div class="slabel">🏠 Ziyaret randevuları</div><div class="card" id="visit-remind-box"></div>
+      <div class="slabel">☪ İslami etkinlik planları</div><div class="card" id="islamic-remind-box"></div>
+      <div class="slabel">📌 Diğer hatırlatıcılar</div><div class="card" id="manual-remind-box"></div>
+    </div>
+    <div class="section" id="sec-ziyaret">
+      <div class="page-header"><div class="page-h-title">Ziyaretler</div><button class="btn primary sm" id="ziyaret-add-btn" onclick="openModal('modal-visit')">+ Ziyaret ekle</button></div>
+      <div class="ik-tabs">
+        <button class="ik-tab active" onclick="setZiyaretTab('gecmis',this)">Geçmiş</button>
+        <button class="ik-tab" onclick="setZiyaretTab('semt',this)">📍 Semt Planı</button>
+      </div>
+      <div id="ziyaret-gecmis">
+        <div id="visit-banners"></div>
+        <div class="slabel">Ziyaret geçmişi</div>
+        <div id="visit-list"></div>
+      </div>
+      <div id="ziyaret-semt" style="display:none">
+        <div class="banner green" id="semt-tip">📍 Bir semt seç</div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn sm" onclick="openModal('modal-addsemt')">+ Semt ekle</button></div>
+        <div class="semt-grid" id="semt-grid"></div>
+        <div id="semt-detail-box"></div>
+      </div>
+    </div>
+    <div class="section" id="sec-islamickit">
+      <div class="page-header"><div class="page-h-title">İslami Kit</div><button class="btn primary sm" id="ik-add-btn" onclick="openModal('modal-islamic')">+ İçerik ekle</button></div>
+      <div class="ik-tabs">
+        <button class="ik-tab active" onclick="setIkTab('icerikler',this)">İçerikler</button>
+        <button class="ik-tab" onclick="setIkTab('takip',this)">Takip Tablosu</button>
+        <button class="ik-tab" onclick="setIkTab('yasin',this)">📿 Yasin</button>
+      </div>
+      <div id="ik-icerikler">
+        <div class="filter-row">
+          <button class="chip active" onclick="setIslamicFilter('tumu',this)">Tümü</button>
+          <button class="chip" onclick="setIslamicFilter('selam',this)">Selamlama</button>
+          <button class="chip" onclick="setIslamicFilter('hadis',this)">Hadis</button>
+          <button class="chip" onclick="setIslamicFilter('dua',this)">Dua</button>
+          <button class="chip" onclick="setIslamicFilter('hikaye',this)">Hikaye</button>
+        </div>
+        <div id="islamic-list"></div>
+      </div>
+      <div id="ik-takip" style="display:none">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Her satır bir içerik, her sütun bir kişi. ✓ = anlatıldı.</div>
+        <div class="filter-row" id="matrix-filter-row">
+          <button class="chip active" onclick="setMatrixFilter('tumu',this)">Tümü</button>
+          <button class="chip" onclick="setMatrixFilter('selam',this)">Selamlama</button>
+          <button class="chip" onclick="setMatrixFilter('hadis',this)">Hadis</button>
+          <button class="chip" onclick="setMatrixFilter('dua',this)">Dua</button>
+          <button class="chip" onclick="setMatrixFilter('hikaye',this)">Hikaye</button>
+        </div>
+        <div id="islamic-matrix"></div>
+      </div>
+      <div id="ik-yasin" style="display:none">
+        <div class="yasin-month-nav">
+          <button class="yasin-month-btn" onclick="changeYasinMonth(-1)">&#9664;</button>
+          <div class="yasin-month-label" id="yasin-month-label">—</div>
+          <button class="yasin-month-btn" onclick="changeYasinMonth(1)">&#9654;</button>
+        </div>
+        <div class="yasin-summary" id="yasin-summary"></div>
+        <div class="filter-row" id="yasin-filter-row">
+          <button class="chip active" onclick="setYasinFilter('tumu',this)">Tümü</button>
+          <button class="chip" onclick="setYasinFilter('okundu',this)">Okundu</button>
+          <button class="chip" onclick="setYasinFilter('bekliyor',this)">Bekliyor</button>
+        </div>
+        <div id="yasin-list"></div>
+      </div>
+    </div>
+    <div class="section" id="sec-metod">
+      <div class="slabel">İlk tanışma</div>
+      <div class="card">
+        <div class="step"><div class="step-num" style="background:var(--blue-l);color:var(--blue)">1</div><div><div class="step-title">Temel bilgileri not al</div><div class="step-sub">Ad, meslek, nereli. Özel bir şey bul: hastası var mı, iş kurmuş mu, çocuğu var mı?</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--blue-l);color:var(--blue)">2</div><div><div class="step-title">24 saat içinde selamlama mesajı at</div><div class="step-sub">"Es-selamu aleyküm, tanışmaktan memnun oldum. Allah hayırlı birliktelikler nasip etsin."</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--blue-l);color:var(--blue)">3</div><div><div class="step-title">Sisteme ekle</div><div class="step-sub">Kişiler sekmesine ekle, notları doldur. Yeni tanışma: arama sıklığı = 7 gün.</div></div></div>
+      </div>
+      <div class="slabel">Rutin arama yapısı</div>
+      <div class="card">
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">1</div><div><div class="step-title">Açılış</div><div class="step-sub">"Aleyküm selam, nasılsın? Aklıma düştün, sormadan geçemedim."</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">2</div><div><div class="step-title">Dinle ve ilgi göster</div><div class="step-sub">Son paylaştığı şeyi sor: "Geçen bahsettiğin iş nasıl gitti?" — notlarına bak!</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">3</div><div><div class="step-title">Bir şey paylaş</div><div class="step-sub">Kısa bir hadis, hikaye, hayır duası. Uzatma.</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">4</div><div><div class="step-title">Duayla kapat</div><div class="step-sub">"Allah seni ve aileni korusun, hayırlı işler nasip etsin."</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">5</div><div><div class="step-title">Hemen not al</div><div class="step-sub">2 dk içinde: ne konuştuk, bir sonraki aramada sorulacak?</div></div></div>
+      </div>
+      <div class="slabel">İlişki seviyeleri</div>
+      <div class="card">
+        <div class="step"><div class="step-num" style="background:var(--green-l);color:var(--green)">A</div><div><div class="step-title">Tanışık (0-3 ay)</div><div class="step-sub">Ayda 1-2 arama. Genel hal-hatır.</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--purple-l);color:var(--purple)">B</div><div><div class="step-title">Ahbap (3-12 ay)</div><div class="step-sub">2 haftada bir arama. İslami konular paylaşılıyor.</div></div></div>
+        <div class="step"><div class="step-num" style="background:var(--amber-l);color:var(--amber)">C</div><div><div class="step-title">Dost (1 yıl+)</div><div class="step-sub">Ziyaretler, ortak aktiviteler, birbirinden dua istemek.</div></div></div>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showTab('kisiler',this)"><span class="nav-icon">👥</span>Kişiler</button>
+    <button class="nav-item" onclick="showTab('hatirlatici',this)"><span class="nav-icon">🔔</span>Hatırlatıcı</button>
+    <button class="nav-item" onclick="showTab('ziyaret',this)"><span class="nav-icon">🏠</span>Ziyaret</button>
+    <button class="nav-item" onclick="showTab('islamickit',this)"><span class="nav-icon">☪</span>İslami Kit</button>
+    <button class="nav-item" onclick="showTab('metod',this)"><span class="nav-icon">📖</span>Metod</button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="modal-person" onclick="overlayClose(event,'modal-person')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="person-modal-title">Yeni Kişi Ekle</div>
+    <input type="hidden" id="p-edit-id">
+    <div class="row2">
+      <div class="field"><label>Ad Soyad *</label><input type="text" id="p-name" placeholder="Mehmet Demir"></div>
+      <div class="field"><label>Telefon</label><input type="tel" id="p-phone" placeholder="0555 000 00 00"></div>
+    </div>
+    <div class="field"><label>Nasıl tanıştınız?</label><input type="text" id="p-meet" placeholder="Camide / İşte..."></div>
+    <div class="row2">
+      <div class="field"><label>Adres</label><input type="text" id="p-address" placeholder="123 Baker St"></div>
+      <div class="field"><label>Semt</label><select id="p-semt"><option value="">Semt seç...</option></select></div>
+    </div>
+    <div class="field"><label>Arama sıklığı</label>
+      <div class="fpick" id="fpick-call">
+        <button class="fpick-opt" data-v="7">Haftada bir</button>
+        <button class="fpick-opt sel" data-v="14">2 haftada bir</button>
+        <button class="fpick-opt" data-v="30">Ayda bir</button>
+        <button class="fpick-opt" data-v="90">3 ayda bir</button>
+      </div>
+    </div>
+    <div class="field"><label>Ziyaret sıklığı</label>
+      <div class="fpick" id="fpick-visit">
+        <button class="fpick-opt" data-v="0">Takip yok</button>
+        <button class="fpick-opt" data-v="30">Ayda bir</button>
+        <button class="fpick-opt sel" data-v="60">2 ayda bir</button>
+        <button class="fpick-opt" data-v="90">3 ayda bir</button>
+        <button class="fpick-opt" data-v="180">6 ayda bir</button>
+      </div>
+    </div>
+    <div class="field"><label>İlişki seviyesi</label>
+      <div class="fpick" id="fpick-level">
+        <button class="fpick-opt sel" data-v="A">A — Tanışık</button>
+        <button class="fpick-opt" data-v="B">B — Ahbap</button>
+        <button class="fpick-opt" data-v="C">C — Dost</button>
+      </div>
+    </div>
+    <div class="field"><label>Notlar</label><textarea id="p-notes" placeholder="Evli, 2 çocuğu var..."></textarea></div>
+    <div class="sheet-actions">
+      <button class="btn danger" id="p-delete-btn" onclick="deletePerson()" style="display:none;margin-right:auto">Sil</button>
+      <button class="btn" onclick="closeModal('modal-person')">İptal</button>
+      <button class="btn primary" onclick="savePerson()">Kaydet</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-callnote" onclick="overlayClose(event,'modal-callnote')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="callnote-title">Arama Notu</div>
+    <input type="hidden" id="cn-id">
+    <div class="field"><label>Bugün ne konuştunuz?</label><textarea id="cn-note" style="min-height:110px" placeholder="Hangi konular açıldı, bir sonraki aramada sorulacaklar..."></textarea></div>
+    <div class="sheet-actions">
+      <button class="btn" onclick="closeModal('modal-callnote')">İptal</button>
+      <button class="btn primary" onclick="saveCallNote()">Aramdım, kaydet</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-reminder" onclick="overlayClose(event,'modal-reminder')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Hatırlatıcı Ekle</div>
+    <div class="field"><label>Tür *</label>
+      <div class="fpick" id="fpick-rtype">
+        <button class="fpick-opt sel" data-v="genel">📌 Genel</button>
+        <button class="fpick-opt" data-v="ziyaret">🏠 Ziyaret Randevusu</button>
+        <button class="fpick-opt" data-v="islami">☪ İslami Etkinlik</button>
+      </div>
+    </div>
+    <div class="field"><label>Başlık *</label><input type="text" id="r-title" placeholder="Hatırlatıcı başlığı..."></div>
+    <div class="row2">
+      <div class="field"><label>Tarih</label><input type="date" id="r-date"></div>
+      <div class="field"><label>Saat</label><input type="text" id="r-time" placeholder="14:00"></div>
+    </div>
+    <div id="r-visit-fields" style="display:none">
+      <div class="field"><label>Kişi</label><select id="r-visit-person"><option value="">Seç...</option></select></div>
+      <div class="field"><label>Adres / Not</label><input type="text" id="r-visit-addr" placeholder="Adres veya ek not..."></div>
+    </div>
+    <div id="r-islamic-fields" style="display:none">
+      <div class="field"><label>İçerik</label><select id="r-islamic-item"><option value="">İçerik seç...</option></select></div>
+      <div class="field"><label>Kişi</label><select id="r-islamic-person"><option value="">Kişi seç...</option></select></div>
+    </div>
+    <div class="field"><label>Not</label><input type="text" id="r-note" placeholder="Ek bilgi..."></div>
+    <div class="sheet-actions">
+      <button class="btn" onclick="closeModal('modal-reminder')">İptal</button>
+      <button class="btn primary" onclick="saveReminder()">Kaydet</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-visit" onclick="overlayClose(event,'modal-visit')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Ziyaret Kaydı</div>
+    <div class="row2">
+      <div class="field"><label>Kişi *</label><select id="v-person"><option value="">Seç...</option></select></div>
+      <div class="field"><label>Tarih *</label><input type="date" id="v-date"></div>
+    </div>
+    <div class="field"><label>Götürülenler</label>
+      <div class="gift-pick" id="gift-pick">
+        <button class="gift-opt" data-v="takvim">📅 Takvim</button>
+        <button class="gift-opt" data-v="takvim-mobil">📱 Mobil Takvim</button>
+        <button class="gift-opt" data-v="hediye">🎁 Hediye</button>
+        <button class="gift-opt" data-v="yiyecek">🍽️ Yiyecek</button>
+        <button class="gift-opt" data-v="kitap">📚 Kitap</button>
+        <button class="gift-opt" data-v="diger">➕ Diğer</button>
+      </div>
+    </div>
+    <div class="field"><label>Ziyaret notu</label><textarea id="v-note" placeholder="Nasıl geçti, ne konuştunuz..."></textarea></div>
+    <div class="field"><label>Bir sonraki ziyarete not</label><input type="text" id="v-nextnote" placeholder="Götürülecekler, yapılacaklar..."></div>
+    <div class="sheet-actions">
+      <button class="btn" onclick="closeModal('modal-visit')">İptal</button>
+      <button class="btn primary" onclick="saveVisit()">Kaydet</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-addsemt" onclick="overlayClose(event,'modal-addsemt')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Semt Yönetimi</div>
+    <div class="field"><label>Semt adı *</label><input type="text" id="semt-name-input" placeholder="Mayfair, Kadıköy..."></div>
+    <div id="semt-manage-list"></div>
+    <div class="sheet-actions">
+      <button class="btn" onclick="closeModal('modal-addsemt')">Kapat</button>
+      <button class="btn primary" onclick="addSemt()">Ekle</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="modal-islamic" onclick="overlayClose(event,'modal-islamic')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">İslami İçerik Ekle</div>
+    <div class="row2">
+      <div class="field"><label>Kategori</label>
+        <select id="i-cat">
+          <option value="selam">Selamlama</option>
+          <option value="hadis" selected>Hadis</option>
+          <option value="dua">Dua</option>
+          <option value="hikaye">Hikaye</option>
+        </select>
+      </div>
+      <div class="field"><label>Başlık</label><input type="text" id="i-title" placeholder="Kısa başlık"></div>
+    </div>
+    <div class="field"><label>Arapça (isteğe bağlı)</label><textarea id="i-arabic" style="direction:rtl;text-align:right;min-height:56px;font-size:15px" placeholder="Arapça..."></textarea></div>
+    <div class="field"><label>Türkçe *</label><textarea id="i-turkish" placeholder="Türkçe metin veya açıklama..."></textarea></div>
+    <div class="field"><label>Kullanım notu</label><input type="text" id="i-usage" placeholder="Ne zaman kullanılır?"></div>
+    <div class="sheet-actions">
+      <button class="btn" onclick="closeModal('modal-islamic')">İptal</button>
+      <button class="btn primary" onclick="saveIslamic()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Wire up auth buttons
+document.getElementById('btn-signin').addEventListener('click', function() {
+  fbAuth.signInWithRedirect(fbProvider);
+});
+document.getElementById('btn-signout').addEventListener('click', function() {
+  if (confirm('Çıkış yapmak istediğine emin misin?')) fbAuth.signOut();
+});
+
+// APP STATE
+var SK = 'iliski_v5';
+var S = {
+  persons: [
+    {id:1,name:'Ahmet Yılmaz',phone:'',meet:'Camide',address:'15 Green St',semt:'Mayfair',freq:14,visitFreq:60,lastCallDate:'2025-03-04',lastVisitDate:'2025-01-07',notes:'Esnaf, bakkal. 2 çocuğu var.',level:'B',callNote:''},
+    {id:2,name:'Hasan Çelik',phone:'',meet:'İş toplantısı',address:'8 Bond Ave',semt:'Mayfair',freq:14,visitFreq:60,lastCallDate:'2025-03-12',lastVisitDate:'2025-02-26',notes:'Muhasebeci.',level:'B',callNote:'İyileşmekte.'},
+    {id:3,name:'Murat Kaya',phone:'',meet:'Arkadaş vesilesiyle',address:'42 Oak Road',semt:'Kensington',freq:30,visitFreq:90,lastCallDate:'2025-02-25',lastVisitDate:'2024-12-10',notes:'Öğretmen. Siyer bilgisi var.',level:'A',callNote:''},
+    {id:4,name:'Ali Kara',phone:'',meet:'Cuma namazı',address:'',semt:'Kensington',freq:7,visitFreq:0,lastCallDate:'2025-03-11',lastVisitDate:null,notes:'Yeni tanıştım. Yazılımcı.',level:'A',callNote:''},
+  ],
+  semtler: ['Mayfair','Kensington','Whitechapel'],
+  reminders: [{id:1,title:'Ramazan tebrik mesajları',rtype:'genel',date:'2025-03-30',note:'3 kişiye',done:false}],
+  visits: [
+    {id:1,personId:2,personName:'Hasan Çelik',date:'2025-02-26',note:'Evinde ziyaret.',gifts:[],nextnote:''},
+    {id:2,personId:1,personName:'Ahmet Yılmaz',date:'2025-01-15',note:'Dükkanına uğradım.',gifts:['takvim'],nextnote:''},
+  ],
+  islamicItems: [
+    {id:1,cat:'selam',title:'Standart selamlama',arabic:'السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ',turkish:'Es-selamu aleyküm ve rahmetullah',usage:'Her aramada açılış',sharedWith:{}},
+    {id:2,cat:'selam',title:'Teşekkür yerine',arabic:'جَزَاكَ اللَّهُ خَيْرًا',turkish:'Allah senden razı olsun.',usage:'Teşekkür yerine kullan',sharedWith:{}},
+    {id:3,cat:'hadis',title:'Mümin kardeşlik',arabic:'المؤمن للمؤمن كالبنيان يشد بعضه بعضاً',turkish:'Mümin, müminin binası gibidir; birbirini destekler. (Buhari)',usage:'Kardeşliği vurgulamak için',sharedWith:{}},
+    {id:4,cat:'hadis',title:'En hayırlı insan',arabic:'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ',turkish:'İnsanların en hayırlısı, insanlara en faydalı olandır. (Taberani)',usage:'Yardım teklif ederken',sharedWith:{}},
+    {id:5,cat:'hadis',title:'Hediyeleşin',arabic:'تَهَادُوا تَحَابُّوا',turkish:"Birbirinize hediye verin, birbirinizi sevin. (Buhari el-Edebü'l-Müfred)",usage:'Küçük bir şey gönderirken',sharedWith:{}},
+    {id:6,cat:'dua',title:'Bereket duası',arabic:'بَارَكَ اللَّهُ فِيكَ',turkish:'Allah sana bereket versin.',usage:'Kapanışta',sharedWith:{}},
+    {id:7,cat:'dua',title:'Veda duası',arabic:'أَسْتَوْدِعُكَ اللَّهَ الَّذِي لَا تَضِيعُ وَدَائِعُهُ',turkish:"Seni, emanetleri kaybolmayan Allah'a emanet ediyorum.",usage:'Vedalaşırken',sharedWith:{}},
+  ],
+  yasinLogs: {},
+  nPerson:5, nReminder:2, nVisit:3, nIslamic:8
+};
+
+function save() {
+  try { localStorage.setItem(SK, JSON.stringify(S)); } catch(e) {}
+  cloudSave();
+}
+function load() {
+  try {
+    var d = localStorage.getItem(SK);
+    if (d) { var ld = JSON.parse(d); Object.keys(ld).forEach(function(k){ S[k]=ld[k]; }); }
+  } catch(e) {}
+}
+
+// HELPERS
+var AVC=[{bg:'#DCE9F8',fg:'#183F6E'},{bg:'#D8F0EF',fg:'#0C5E5E'},{bg:'#EAE2FC',fg:'#3E2578'},{bg:'#FBE8CC',fg:'#7A5018'},{bg:'#D4EDDF',fg:'#2D6A4F'},{bg:'#FBDCDD',fg:'#8B1E22'}];
+function ac(i){return AVC[i%AVC.length]}
+function inits(n){return n.split(' ').map(function(w){return w[0]}).join('').toUpperCase().slice(0,2)}
+function dSince(d){if(!d)return 999;try{return Math.round((new Date()-new Date(d))/86400000);}catch(e){return 999}}
+function today(){return new Date().toISOString().split('T')[0]}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// NAV
+function showTab(tab,btn){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('sec-'+tab).classList.add('active');
+  btn.classList.add('active');
+  var titles={kisiler:'Kişiler',hatirlatici:'Hatırlatıcılar',ziyaret:'Ziyaretler',islamickit:'İslami Kit',metod:'Metod'};
+  document.getElementById('page-title').textContent=titles[tab]||tab;
+  renderAll();
+}
+
+// SUB-TABS
+function setZiyaretTab(tab,btn){
+  document.querySelectorAll('#sec-ziyaret .ik-tab').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('ziyaret-gecmis').style.display=tab==='gecmis'?'block':'none';
+  document.getElementById('ziyaret-semt').style.display=tab==='semt'?'block':'none';
+  document.getElementById('ziyaret-add-btn').style.display=tab==='gecmis'?'inline-block':'none';
+  if(tab==='semt')renderSemt();
+}
+var ikTab='icerikler',matrixFilter='tumu';
+function setIkTab(tab,btn){
+  ikTab=tab;
+  document.querySelectorAll('#sec-islamickit .ik-tab').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('ik-icerikler').style.display=tab==='icerikler'?'block':'none';
+  document.getElementById('ik-takip').style.display=tab==='takip'?'block':'none';
+  document.getElementById('ik-yasin').style.display=tab==='yasin'?'block':'none';
+  document.getElementById('ik-add-btn').style.display=tab==='icerikler'?'inline-block':'none';
+  if(tab==='takip')renderMatrix();
+  if(tab==='yasin')renderYasin();
+}
+function setMatrixFilter(f,btn){matrixFilter=f;document.querySelectorAll('#matrix-filter-row .chip').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderMatrix();}
+
+// MODAL
+function openModal(id){
+  if(id==='modal-person')resetPersonForm();
+  if(id==='modal-visit'){populateVisitSelect();document.getElementById('v-date').value=today();}
+  if(id==='modal-addsemt')renderSemtManageList();
+  if(id==='modal-reminder'){
+    var pOpts='<option value="">Seç...</option>'+S.persons.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join('');
+    document.getElementById('r-visit-person').innerHTML=pOpts;
+    document.getElementById('r-islamic-person').innerHTML=pOpts;
+    document.getElementById('r-islamic-item').innerHTML='<option value="">İçerik seç...</option>'+S.islamicItems.map(function(i){return '<option value="'+i.id+'">'+esc(i.title)+'</option>'}).join('');
+    fpickSet('fpick-rtype','genel');
+    ['r-title','r-note','r-time','r-visit-addr'].forEach(function(x){document.getElementById(x).value=''});
+    document.getElementById('r-date').value='';
+    document.getElementById('r-visit-fields').style.display='none';
+    document.getElementById('r-islamic-fields').style.display='none';
+  }
+  document.getElementById(id).classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');document.body.style.overflow='';}
+function overlayClose(e,id){if(e.target.classList.contains('overlay'))closeModal(id);}
+
+document.addEventListener('click',function(e){
+  var opt=e.target.closest('#fpick-rtype .fpick-opt');
+  if(!opt)return;
+  document.getElementById('r-visit-fields').style.display=opt.dataset.v==='ziyaret'?'block':'none';
+  document.getElementById('r-islamic-fields').style.display=opt.dataset.v==='islami'?'block':'none';
+});
+document.querySelectorAll('.fpick').forEach(function(fp){
+  fp.addEventListener('click',function(e){
+    var opt=e.target.closest('.fpick-opt');if(!opt)return;
+    fp.querySelectorAll('.fpick-opt').forEach(function(o){o.classList.remove('sel')});
+    opt.classList.add('sel');
+  });
+});
+document.querySelectorAll('.gift-pick').forEach(function(gp){
+  gp.addEventListener('click',function(e){var opt=e.target.closest('.gift-opt');if(!opt)return;opt.classList.toggle('sel');});
+});
+function fpickVal(id){var s=document.querySelector('#'+id+' .fpick-opt.sel');return s?s.dataset.v:null}
+function fpickSet(id,val){document.querySelectorAll('#'+id+' .fpick-opt').forEach(function(o){o.classList.toggle('sel',String(o.dataset.v)===String(val))})}
+
+// PERSONS
+var personFilter='tumu';
+function populateSemtSelect(sel){
+  document.getElementById('p-semt').innerHTML='<option value="">Semt seç...</option>'+S.semtler.map(function(s){return '<option value="'+esc(s)+'"'+(s===sel?' selected':'')+'>'+esc(s)+'</option>'}).join('');
+}
+function resetPersonForm(){
+  document.getElementById('person-modal-title').textContent='Yeni Kişi Ekle';
+  document.getElementById('p-edit-id').value='';
+  ['p-name','p-phone','p-meet','p-address','p-notes'].forEach(function(id){document.getElementById(id).value=''});
+  document.getElementById('p-delete-btn').style.display='none';
+  fpickSet('fpick-call',14);fpickSet('fpick-visit',60);fpickSet('fpick-level','A');
+  populateSemtSelect('');
+}
+function openEditPerson(id){
+  var p=S.persons.find(function(x){return x.id===id});if(!p)return;
+  document.getElementById('person-modal-title').textContent='Kişiyi Düzenle';
+  document.getElementById('p-edit-id').value=id;
+  document.getElementById('p-name').value=p.name;document.getElementById('p-phone').value=p.phone||'';
+  document.getElementById('p-meet').value=p.meet;document.getElementById('p-address').value=p.address||'';
+  document.getElementById('p-notes').value=p.notes;
+  document.getElementById('p-delete-btn').style.display='block';
+  fpickSet('fpick-call',p.freq);fpickSet('fpick-visit',p.visitFreq||0);fpickSet('fpick-level',p.level);
+  populateSemtSelect(p.semt||'');
+  document.getElementById('modal-person').classList.add('show');document.body.style.overflow='hidden';
+}
+function savePerson(){
+  var name=document.getElementById('p-name').value.trim();if(!name){alert('Ad Soyad zorunludur.');return;}
+  var eid=document.getElementById('p-edit-id').value;
+  var data={name:name,phone:document.getElementById('p-phone').value,meet:document.getElementById('p-meet').value||'Bilinmiyor',address:document.getElementById('p-address').value,semt:document.getElementById('p-semt').value,freq:parseInt(fpickVal('fpick-call')||14),visitFreq:parseInt(fpickVal('fpick-visit')||0),level:fpickVal('fpick-level')||'A',notes:document.getElementById('p-notes').value};
+  if(eid){var i=S.persons.findIndex(function(x){return x.id==eid});if(i>-1)S.persons[i]=Object.assign({},S.persons[i],data);}
+  else S.persons.push(Object.assign({},data,{id:S.nPerson++,lastCallDate:today(),lastVisitDate:null,callNote:''}));
+  save();closeModal('modal-person');renderAll();
+}
+function deletePerson(){
+  var id=parseInt(document.getElementById('p-edit-id').value);
+  var p=S.persons.find(function(x){return x.id===id});
+  if(!confirm((p?p.name:'Bu kişi')+' silinsin mi?'))return;
+  S.persons=S.persons.filter(function(x){return x.id!==id});
+  save();closeModal('modal-person');renderAll();
+}
+function openCallNote(id){
+  var p=S.persons.find(function(x){return x.id===id});if(!p)return;
+  document.getElementById('cn-id').value=id;
+  document.getElementById('callnote-title').textContent=p.name+' — Arama Notu';
+  document.getElementById('cn-note').value=p.callNote||'';
+  document.getElementById('modal-callnote').classList.add('show');document.body.style.overflow='hidden';
+}
+function saveCallNote(){
+  var id=parseInt(document.getElementById('cn-id').value);
+  var i=S.persons.findIndex(function(x){return x.id===id});
+  if(i>-1){S.persons[i].callNote=document.getElementById('cn-note').value;S.persons[i].lastCallDate=today();}
+  save();closeModal('modal-callnote');renderAll();
+}
+function setFilter(f,btn){personFilter=f;document.querySelectorAll('#sec-kisiler .chip').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderPersons();}
+function markCalled(id){var i=S.persons.findIndex(function(x){return x.id===id});if(i>-1)S.persons[i].lastCallDate=today();save();renderAll();}
+function renderPersons(){
+  var q=(document.getElementById('search-input')?document.getElementById('search-input').value:'').toLowerCase();
+  var overdue=S.persons.filter(function(p){return dSince(p.lastCallDate)>=p.freq});
+  var vod=S.persons.filter(function(p){return p.visitFreq>0&&dSince(p.lastVisitDate)>=p.visitFreq});
+  document.getElementById('st-total').textContent=S.persons.length;
+  document.getElementById('st-overdue').textContent=overdue.length;
+  document.getElementById('st-visit').textContent=vod.length;
+  document.getElementById('overdue-banners').innerHTML=
+    overdue.slice(0,2).map(function(p){return '<div class="banner red">⚠ <b>'+esc(p.name)+'</b> — '+dSince(p.lastCallDate)+' gündür aranmadı!</div>'}).join('')+
+    vod.slice(0,1).map(function(p){return '<div class="banner amber">🏠 <b>'+esc(p.name)+'</b> — '+(dSince(p.lastVisitDate)<900?dSince(p.lastVisitDate)+' gündür ziyaret yok':'Hiç ziyaret edilmedi')+'</div>'}).join('');
+  var filtered=S.persons.filter(function(p){
+    if(!(p.name.toLowerCase().includes(q)||p.meet.toLowerCase().includes(q)||(p.semt||'').toLowerCase().includes(q)))return false;
+    if(personFilter==='aramaGerekli')return dSince(p.lastCallDate)>=p.freq;
+    if(personFilter==='ziyaretGerekli')return p.visitFreq>0&&dSince(p.lastVisitDate)>=p.visitFreq;
+    if(personFilter==='yeni')return p.level==='A';
+    return true;
+  });
+  var ll={A:'Tanışık',B:'Ahbap',C:'Dost'},lc={A:'gray',B:'blue',C:'purple'};
+  document.getElementById('person-list').innerHTML=!filtered.length?'<div class="empty">Kişi bulunamadı.</div>':filtered.map(function(p){
+    var idx=S.persons.indexOf(p),cd=dSince(p.lastCallDate);
+    var urg=cd>=p.freq?'red':cd>=p.freq*.7?'amber':'green';
+    var pct=Math.min(100,Math.round(cd/p.freq*100));
+    var fc=urg==='red'?'var(--red)':urg==='amber'?'var(--amber)':'var(--green)';
+    var a=ac(idx),vd=dSince(p.lastVisitDate);
+    var vi=p.visitFreq>0?'<div class="visit-info">🏠 Ziyaret: '+(vd<900?vd+' gün önce':'Hiç')+' / hedef '+p.visitFreq+' gün '+(vd>=p.visitFreq?'⚠':'')+(p.nextVisitNote?' · 📋 '+esc(p.nextVisitNote):'')+'</div>':'';
+    var st=p.semt?'<span class="semt-tag">📍 '+esc(p.semt)+'</span>':'';
+    var ph=p.phone?'<a href="tel:'+esc(p.phone)+'" class="btn sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📱 Ara</a>':'';
+    return '<div class="person-card '+(urg==='green'?'ok':urg)+'">'
+      +'<div class="ph"><div class="avatar" style="background:'+a.bg+';color:'+a.fg+'">'+inits(p.name)+'</div>'
+      +'<div style="flex:1"><div class="pname">'+esc(p.name)+'</div><div class="pmeta">'+esc(p.meet)+' <span class="tag '+lc[p.level]+'">'+ll[p.level]+'</span>'+st+'</div></div>'
+      +'<span class="tag '+urg+'">'+(cd>=p.freq?'Ara!':cd+'g önce')+'</span></div>'
+      +(p.address?'<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📌 '+esc(p.address)+'</div>':'')
+      +(p.notes?'<div class="pnotes">'+esc(p.notes)+'</div>':'')
+      +(p.callNote?'<div class="call-note-box">📝 '+esc(p.callNote)+'</div>':'')
+      +'<div class="prog-label">Arama döngüsü ('+cd+'/'+p.freq+' gün)</div>'
+      +'<div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:'+fc+'"></div></div>'
+      +vi
+      +'<div class="btn-row">'+ph
+      +'<button class="btn primary sm" onclick="openCallNote('+p.id+')">📞 Aramdım</button>'
+      +'<button class="btn sm" onclick="openEditPerson('+p.id+')">Düzenle</button>'
+      +'<button class="btn sm" onclick="quickVisit('+p.id+')">🏠 Ziyaret</button>'
+      +'</div></div>';
+  }).join('');
+}
+function quickVisit(pid){populateVisitSelect();document.getElementById('v-date').value=today();document.getElementById('v-person').value=pid;document.getElementById('modal-visit').classList.add('show');document.body.style.overflow='hidden';}
+
+// REMINDERS
+function saveReminder(){
+  var t=document.getElementById('r-title').value.trim();if(!t){alert('Başlık zorunludur.');return;}
+  var rt=fpickVal('fpick-rtype')||'genel';
+  var e={id:S.nReminder++,title:t,rtype:rt,date:document.getElementById('r-date').value,time:document.getElementById('r-time').value,note:document.getElementById('r-note').value,done:false};
+  if(rt==='ziyaret'){var pid=parseInt(document.getElementById('r-visit-person').value);if(pid){var pv=S.persons.find(function(x){return x.id===pid});e.personId=pid;e.personName=pv?pv.name:'';}e.addr=document.getElementById('r-visit-addr').value;}
+  if(rt==='islami'){var iid=parseInt(document.getElementById('r-islamic-item').value);if(iid){var it=S.islamicItems.find(function(x){return x.id===iid});e.islamicId=iid;e.islamicTitle=it?it.title:'';}var pid2=parseInt(document.getElementById('r-islamic-person').value);if(pid2){var pi=S.persons.find(function(x){return x.id===pid2});e.personId=pid2;e.personName=pi?pi.name:'';}}
+  S.reminders.push(e);save();closeModal('modal-reminder');renderReminders();
+}
+function rItem(r,icon,bg){
+  return '<div class="r-item" style="opacity:'+(r.done?.45:1)+'">'
+    +'<div class="r-icon" style="background:'+bg+'">'+icon+'</div>'
+    +'<div class="r-body"><div class="r-title" style="text-decoration:'+(r.done?'line-through':'none')+'">'+esc(r.title)+'</div>'
+    +(r.personName?'<div class="r-sub">👤 '+esc(r.personName)+'</div>':'')
+    +(r.islamicTitle?'<div class="r-sub">☪ '+esc(r.islamicTitle)+'</div>':'')
+    +(r.addr?'<div class="r-sub">📌 '+esc(r.addr)+'</div>':'')
+    +(r.note?'<div class="r-sub">'+esc(r.note)+'</div>':'')
+    +((r.date||r.time)?'<div class="r-date">'+(r.date||'')+(r.time?' · '+r.time:'')+'</div>':'')
+    +'</div><div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+    +'<button class="btn sm" onclick="toggleReminder('+r.id+')">'+(r.done?'Geri al':'Tamam')+'</button>'
+    +'<button class="btn danger sm" onclick="deleteReminder('+r.id+')">✕</button></div></div>';
+}
+function renderReminders(){
+  var ao=S.persons.filter(function(p){return dSince(p.lastCallDate)>=p.freq}).sort(function(a,b){return dSince(b.lastCallDate)-dSince(a.lastCallDate)});
+  document.getElementById('auto-remind-box').innerHTML=ao.length?ao.map(function(p){return '<div class="r-item"><div class="r-icon" style="background:var(--red-l)">📞</div><div class="r-body"><div class="r-title">'+esc(p.name)+' — rutin arama</div><div class="r-sub">'+dSince(p.lastCallDate)+' gündür aranmadı'+(p.callNote?' · '+esc(p.callNote.slice(0,40)):'')+'</div></div><button class="btn primary sm" onclick="markCalled('+p.id+')">Aramdım</button></div>'}).join(''):'<div class="empty">Gecikmiş arama yok 🎉</div>';
+  var vr=S.reminders.filter(function(r){return r.rtype==='ziyaret'}).sort(function(a,b){return(a.done?1:0)-(b.done?1:0)});
+  document.getElementById('visit-remind-box').innerHTML=vr.length?vr.map(function(r){return rItem(r,'🏠','var(--green-l)')}).join(''):'<div class="empty">Planlanmış ziyaret randevusu yok.</div>';
+  var ir=S.reminders.filter(function(r){return r.rtype==='islami'}).sort(function(a,b){return(a.done?1:0)-(b.done?1:0)});
+  document.getElementById('islamic-remind-box').innerHTML=ir.length?ir.map(function(r){return rItem(r,'☪','var(--teal-l)')}).join(''):'<div class="empty">Planlanmış İslami etkinlik yok.</div>';
+  var sr=S.reminders.filter(function(r){return !r.rtype||r.rtype==='genel'}).sort(function(a,b){return(a.done?1:0)-(b.done?1:0)});
+  document.getElementById('manual-remind-box').innerHTML=sr.length?sr.map(function(r){return rItem(r,'📌','var(--surface2)')}).join(''):'<div class="empty">Hatırlatıcı yok. + Ekle butonunu kullan.</div>';
+}
+function toggleReminder(id){var r=S.reminders.find(function(x){return x.id===id});if(r){r.done=!r.done;save();renderReminders();}}
+function deleteReminder(id){S.reminders=S.reminders.filter(function(x){return x.id!==id});save();renderReminders();}
+
+// VISITS
+var GL={'takvim':'📅 Takvim','takvim-mobil':'📱 Mobil Takvim','hediye':'🎁 Hediye','yiyecek':'🍽️ Yiyecek','kitap':'📚 Kitap','diger':'➕ Diğer'};
+function populateVisitSelect(){document.getElementById('v-person').innerHTML='<option value="">Kişi seç...</option>'+S.persons.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+(p.semt?' ('+p.semt+')':'')+'</option>'}).join('');}
+function saveVisit(){
+  var pid=parseInt(document.getElementById('v-person').value),date=document.getElementById('v-date').value;
+  if(!pid||!date){alert('Kişi ve tarih seçiniz.');return;}
+  var p=S.persons.find(function(x){return x.id===pid});
+  var gifts=[].slice.call(document.querySelectorAll('#gift-pick .gift-opt.sel')).map(function(b){return b.dataset.v});
+  var nx=document.getElementById('v-nextnote').value;
+  S.visits.unshift({id:S.nVisit++,personId:pid,personName:p?p.name:'',date:date,note:document.getElementById('v-note').value,gifts:gifts,nextnote:nx});
+  if(p){p.lastVisitDate=date;if(nx)p.nextVisitNote=nx;}
+  ['v-note','v-nextnote'].forEach(function(i){document.getElementById(i).value=''});
+  document.querySelectorAll('#gift-pick .gift-opt').forEach(function(b){b.classList.remove('sel')});
+  save();closeModal('modal-visit');renderAll();
+}
+function deleteVisit(id){if(!confirm('Silinsin mi?'))return;S.visits=S.visits.filter(function(x){return x.id!==id});save();renderVisits();}
+function renderVisits(){
+  var od=S.persons.filter(function(p){return p.visitFreq>0&&dSince(p.lastVisitDate)>=p.visitFreq});
+  document.getElementById('visit-banners').innerHTML=od.map(function(p){return '<div class="banner amber" style="cursor:pointer" onclick="quickVisit('+p.id+')">🏠 <b>'+esc(p.name)+'</b> — '+(dSince(p.lastVisitDate)<900?dSince(p.lastVisitDate)+' gündür ziyaret yok':'Hiç ziyaret edilmedi')+' → Ekle</div>'}).join('');
+  document.getElementById('visit-list').innerHTML=S.visits.length?S.visits.map(function(v){
+    var gh=v.gifts&&v.gifts.length?'<div class="gift-tags">'+v.gifts.map(function(g){return '<span class="gift-tag">'+(GL[g]||g)+'</span>'}).join('')+'</div>':'';
+    return '<div class="visit-card"><div class="visit-card-header"><div class="v-dot" style="margin-top:5px;flex-shrink:0"></div><div style="flex:1"><div class="visit-card-name">'+esc(v.personName)+'</div><div class="visit-card-meta">'+v.date+'</div></div><button class="del-btn" onclick="deleteVisit('+v.id+')">✕</button></div>'+gh+(v.note?'<div class="visit-card-note">'+esc(v.note)+'</div>':'')+(v.nextnote?'<div class="next-visit-box">📋 Sonraki: '+esc(v.nextnote)+'</div>':'')+'</div>';
+  }).join(''):'<div class="empty">Henüz ziyaret kaydı yok.</div>';
+}
+
+// SEMT
+var activeSemt=null;
+function addSemt(){var v=document.getElementById('semt-name-input').value.trim();if(!v)return;if(S.semtler.includes(v)){alert('Bu semt zaten var.');return;}S.semtler.push(v);document.getElementById('semt-name-input').value='';save();renderSemtManageList();renderSemt();}
+function deleteSemt(n){if(!confirm('"'+n+'" silinsin mi?'))return;S.semtler=S.semtler.filter(function(s){return s!==n});S.persons.forEach(function(p){if(p.semt===n)p.semt='';});if(activeSemt===n)activeSemt=null;save();renderSemtManageList();renderSemt();}
+function renderSemtManageList(){document.getElementById('semt-manage-list').innerHTML=S.semtler.length?S.semtler.map(function(s){var cnt=S.persons.filter(function(p){return p.semt===s}).length;return '<div class="r-item"><div class="r-body"><div class="r-title">'+esc(s)+'</div><div class="r-sub">'+cnt+' kişi</div></div><button class="btn danger sm" onclick="deleteSemt(\''+esc(s)+'\')">Sil</button></div>'}).join(''):'<div class="empty">Semt eklenmedi.</div>';}
+function selectSemt(n){activeSemt=activeSemt===n?null:n;renderSemt();}
+function renderSemt(){
+  if(!S.semtler.length){document.getElementById('semt-grid').innerHTML='<div class="empty" style="grid-column:span 2">Semt eklenmedi.</div>';document.getElementById('semt-detail-box').innerHTML='';return;}
+  document.getElementById('semt-grid').innerHTML=S.semtler.map(function(s){
+    var pp=S.persons.filter(function(p){return p.semt===s});
+    var ov=pp.filter(function(p){return p.visitFreq>0&&dSince(p.lastVisitDate)>=p.visitFreq}).length;
+    var oc=pp.filter(function(p){return dSince(p.lastCallDate)>=p.freq}).length;
+    return '<div class="semt-card'+(activeSemt===s?' active-semt':'')+'" onclick="selectSemt(\''+esc(s)+'\')">'
+      +'<div class="semt-urgency" style="background:'+(ov>0||oc>0?'var(--red)':pp.length>0?'var(--green)':'var(--border2)')+'"></div>'
+      +'<div class="semt-name">'+esc(s)+'</div>'
+      +'<div class="semt-count">'+pp.length+' kişi'+(ov?' · '+ov+' ziyaret':'')+( oc?' · '+oc+' arama':'')+'</div></div>';
+  }).join('');
+  var box=document.getElementById('semt-detail-box'),tip=document.getElementById('semt-tip');
+  if(!activeSemt){tip.style.display='block';box.innerHTML='';return;}
+  tip.style.display='none';
+  var pp=S.persons.filter(function(p){return p.semt===activeSemt});
+  if(!pp.length){box.innerHTML='<div class="semt-detail"><div class="empty">Bu semtte kişi yok.</div></div>';return;}
+  var sorted=pp.slice().sort(function(a,b){return(b.visitFreq>0&&dSince(b.lastVisitDate)>=b.visitFreq?1:0)-(a.visitFreq>0&&dSince(a.lastVisitDate)>=a.visitFreq?1:0)});
+  var html='<div class="semt-detail"><div class="semt-detail-header"><div><div style="font-family:serif;font-size:16px;font-weight:600">📍 '+esc(activeSemt)+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">'+pp.length+' kişi</div></div><button class="btn primary sm" onclick="planVisitSemt(\''+esc(activeSemt)+'\')">Ziyaret planla</button></div>';
+  html+=sorted.map(function(p){
+    var a=ac(S.persons.indexOf(p));var vd=dSince(p.lastVisitDate),cd=dSince(p.lastCallDate);
+    var vo=p.visitFreq>0&&vd>=p.visitFreq,co=cd>=p.freq;
+    return '<div class="semt-person-row" onclick="openEditPerson('+p.id+')">'
+      +'<div class="avatar" style="background:'+a.bg+';color:'+a.fg+';width:36px;height:36px;font-size:12px">'+inits(p.name)+'</div>'
+      +'<div class="semt-person-info"><div class="semt-person-name">'+esc(p.name)+'</div>'+(p.address?'<div class="semt-person-addr">📌 '+esc(p.address)+'</div>':'')
+      +'<div class="semt-person-visit" style="color:'+(vo?'var(--red)':p.visitFreq>0?'var(--green)':'var(--text3)')+'">'+(vo?'⚠ ':'')+(p.visitFreq>0?(vd<900?vd+' gün önce':'Hiç ziyaret edilmedi'):'Ziyaret takibi yok')+'</div>'+(co?'<div style="font-size:11px;color:var(--red)">📞 '+cd+' gündür aranmadı</div>':'')+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'+(vo?'<button class="btn primary sm" onclick="event.stopPropagation();quickVisit('+p.id+')">Ziyaret</button>':'')+(co?'<button class="btn sm" onclick="event.stopPropagation();openCallNote('+p.id+')">Ara</button>':'')+'</div></div>';
+  }).join('');
+  box.innerHTML=html+'</div>';
+}
+function planVisitSemt(s){populateVisitSelect();document.getElementById('v-date').value=today();var p=S.persons.find(function(x){return x.semt===s&&x.visitFreq>0&&dSince(x.lastVisitDate)>=x.visitFreq});if(p)document.getElementById('v-person').value=p.id;document.getElementById('modal-visit').classList.add('show');document.body.style.overflow='hidden';}
+
+// ISLAMIC
+var iFilter='tumu';
+var CL={selam:'Selamlama',hadis:'Hadis',dua:'Dua',hikaye:'Hikaye'};
+var CC={selam:'teal',hadis:'blue',dua:'green',hikaye:'purple'};
+function setIslamicFilter(f,btn){iFilter=f;document.querySelectorAll('#ik-icerikler .chip').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderIslamic();}
+function saveIslamic(){
+  var tr=document.getElementById('i-turkish').value.trim();if(!tr){alert('Türkçe metin zorunludur.');return;}
+  S.islamicItems.push({id:S.nIslamic++,cat:document.getElementById('i-cat').value,title:document.getElementById('i-title').value||tr.slice(0,30),arabic:document.getElementById('i-arabic').value,turkish:tr,usage:document.getElementById('i-usage').value,sharedWith:{}});
+  ['i-title','i-arabic','i-turkish','i-usage'].forEach(function(id){document.getElementById(id).value=''});
+  save();closeModal('modal-islamic');renderIslamic();
+}
+function deleteIslamic(id){if(!confirm('Silinsin mi?'))return;S.islamicItems=S.islamicItems.filter(function(x){return x.id!==id});save();renderIslamic();}
+function toggleShare(iid,pid){var item=S.islamicItems.find(function(x){return x.id===iid});if(!item)return;if(!item.sharedWith)item.sharedWith={};item.sharedWith[pid]=!item.sharedWith[pid];save();if(ikTab==='takip')renderMatrix();else renderIslamic();}
+function renderIslamic(){
+  var filtered=iFilter==='tumu'?S.islamicItems:S.islamicItems.filter(function(i){return i.cat===iFilter});
+  document.getElementById('islamic-list').innerHTML=!filtered.length?'<div class="empty">İçerik yok.</div>':filtered.map(function(item){
+    var sc=Object.values(item.sharedWith||{}).filter(Boolean).length;
+    var checks=S.persons.map(function(p){var d=item.sharedWith&&item.sharedWith[p.id];return '<button class="pcheck '+(d?'done':'')+'" onclick="toggleShare('+item.id+','+p.id+')">'+(d?'✓':'+')+' '+esc(p.name.split(' ')[0])+'</button>';}).join('');
+    return '<div class="islamic-card-wrap"><div class="ic-header"><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span class="tag '+(CC[item.cat]||'gray')+'">'+(CL[item.cat]||item.cat)+'</span><span style="font-size:13px;font-weight:500">'+esc(item.title)+'</span></div><button class="del-btn" onclick="deleteIslamic('+item.id+')">✕</button></div><div class="i-item">'+(item.arabic?'<div class="i-arabic">'+esc(item.arabic)+'</div>':'')+'<div class="i-tr">'+esc(item.turkish)+'</div>'+(item.usage?'<div class="i-usage">'+esc(item.usage)+'</div>':'')+'</div><div class="tracker-label">Kime anlatıldı? ('+sc+'/'+S.persons.length+' kişi)</div><div class="person-checks">'+checks+'</div></div>';
+  }).join('');
+}
+function renderMatrix(){
+  var filtered=matrixFilter==='tumu'?S.islamicItems:S.islamicItems.filter(function(i){return i.cat===matrixFilter});
+  if(!filtered.length||!S.persons.length){document.getElementById('islamic-matrix').innerHTML='<div class="empty">İçerik veya kişi yok.</div>';return;}
+  var th='<tr><th style="min-width:120px">İçerik</th>'+S.persons.map(function(p){return '<th class="person-col">'+esc(p.name.split(' ')[0])+'</th>'}).join('')+'<th>%</th></tr>';
+  var rows=filtered.map(function(item){
+    var total=S.persons.filter(function(p){return item.sharedWith&&item.sharedWith[p.id]}).length;
+    var pct=S.persons.length?Math.round(total/S.persons.length*100):0;
+    var cells='<td><span class="item-title-text">'+esc(item.title)+'</span><span class="tag '+(CC[item.cat]||'gray')+'" style="font-size:10px;padding:1px 5px">'+(CL[item.cat]||item.cat)+'</span></td>';
+    S.persons.forEach(function(p){var d=item.sharedWith&&item.sharedWith[p.id];cells+='<td class="person-cell"><div class="matrix-check '+(d?'done':'')+'" onclick="toggleShare('+item.id+','+p.id+')">'+(d?'✓':'')+'</div></td>';});
+    cells+='<td><div class="matrix-progress">'+total+'/'+S.persons.length+'<br><span style="color:'+(pct===100?'var(--green)':pct>50?'var(--amber)':'var(--text3)')+'">'+pct+'%</span></div></td>';
+    return '<tr>'+cells+'</tr>';
+  }).join('');
+  document.getElementById('islamic-matrix').innerHTML='<div class="matrix-wrap"><table class="matrix-table"><thead>'+th+'</thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// YASIN
+var yYear=new Date().getFullYear(),yMonth=new Date().getMonth(),yFilter='tumu';
+var MN=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function yKey(pid){return pid+'_'+yYear+'_'+String(yMonth).padStart(2,'0')}
+function yDone(pid){return !!(S.yasinLogs&&S.yasinLogs[yKey(pid)])}
+function yDate(pid){return S.yasinLogs&&S.yasinLogs[yKey(pid)]||null}
+function changeYasinMonth(d){yMonth+=d;if(yMonth<0){yMonth=11;yYear--;}if(yMonth>11){yMonth=0;yYear++;}renderYasin();}
+function setYasinFilter(f,btn){yFilter=f;document.querySelectorAll('#yasin-filter-row .chip').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderYasin();}
+function toggleYasin(pid){if(!S.yasinLogs)S.yasinLogs={};var k=yKey(pid);if(S.yasinLogs[k])delete S.yasinLogs[k];else S.yasinLogs[k]=today();save();renderYasin();}
+function renderYasin(){
+  document.getElementById('yasin-month-label').textContent=MN[yMonth]+' '+yYear;
+  if(!S.yasinLogs)S.yasinLogs={};
+  var done=S.persons.filter(function(p){return yDone(p.id)}).length;
+  var pend=S.persons.length-done;
+  var pct=S.persons.length?Math.round(done/S.persons.length*100):0;
+  document.getElementById('yasin-summary').innerHTML='<div class="yasin-stat"><div class="yasin-stat-n" style="color:var(--green)">'+done+'</div><div class="yasin-stat-l">Okundu</div></div><div class="yasin-stat"><div class="yasin-stat-n" style="color:var(--amber)">'+pend+'</div><div class="yasin-stat-l">Bekliyor</div></div><div class="yasin-stat"><div class="yasin-stat-n" style="color:'+(pct===100?'var(--green)':'var(--text)')+'">'+pct+'%</div><div class="yasin-stat-l">Tamamlama</div></div>';
+  var fl=S.persons;
+  if(yFilter==='okundu')fl=S.persons.filter(function(p){return yDone(p.id)});
+  if(yFilter==='bekliyor')fl=S.persons.filter(function(p){return !yDone(p.id)});
+  if(!fl.length){document.getElementById('yasin-list').innerHTML='<div class="empty">Bu filtrede kişi yok.</div>';return;}
+  var sorted=fl.slice().sort(function(a,b){return(yDone(a.id)?1:0)-(yDone(b.id)?1:0)});
+  document.getElementById('yasin-list').innerHTML=sorted.map(function(p){
+    var a=ac(S.persons.indexOf(p)),d=yDone(p.id),ds=yDate(p.id);
+    return '<div class="yasin-person-card '+(d?'done-card':'pending-card')+'">'
+      +'<div class="avatar" style="background:'+a.bg+';color:'+a.fg+';width:40px;height:40px;font-size:13px">'+inits(p.name)+'</div>'
+      +'<div class="yasin-person-info"><div class="yasin-person-name">'+esc(p.name)+'</div><div class="yasin-person-meta">'+esc(p.meet)+(p.semt?' · '+esc(p.semt):'')+'</div>'
+      +(d?'<div class="yasin-person-date">✓ '+ds+' tarihinde okundu</div>':'<div style="font-size:11px;color:var(--text3);margin-top:3px">Bu ay henüz okunmadı</div>')+'</div>'
+      +'<button class="yasin-check-btn '+(d?'checked':'')+'" onclick="toggleYasin('+p.id+')">'+(d?'✓':'○')+'</button></div>';
+  }).join('');
+}
+
+function renderAll(){renderPersons();renderReminders();renderVisits();renderSemt();renderIslamic();renderYasin();}
+
+
+// ═══════════════════════════════════════
+//  FIREBASE — runs after DOM & S are ready
+// ═══════════════════════════════════════
+var firebaseConfig = {
+  apiKey: "AIzaSyCSKWWK2ILzUpwB3sWlHNGXrj0aKr7w2mk",
+  authDomain: "hidayet-f52ed.firebaseapp.com",
+  projectId: "hidayet-f52ed",
+  storageBucket: "hidayet-f52ed.firebasestorage.app",
+  messagingSenderId: "119054633346",
+  appId: "1:119054633346:web:f7cb22707b848596b4a79b"
+};
+firebase.initializeApp(firebaseConfig);
+var fbAuth = firebase.auth();
+var fbDb = firebase.firestore();
+var fbProvider = new firebase.auth.GoogleAuthProvider();
+var currentUid = null;
+var fsUnsub = null;
+var saveTimer = null;
+
+function cloudSave() {
+  if (!currentUid) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function() {
+    fbDb.collection('users').doc(currentUid)
+      .set({ data: JSON.stringify(S), updatedAt: new Date().toISOString() })
+      .catch(function(e){ console.error('Cloud save error:', e); });
+  }, 1500);
+}
+
+function updateAuthUI(user) {
+  var btnSignin = document.getElementById('btn-signin');
+  var userBar = document.getElementById('user-bar');
+  var uName = document.getElementById('u-name');
+  var uAvatar = document.getElementById('u-avatar');
+  var barText = document.getElementById('auth-bar-text');
+  if (user) {
+    var dn = user.displayName || user.email || 'Kullanıcı';
+    if (btnSignin) btnSignin.style.display = 'none';
+    if (userBar) userBar.style.display = 'flex';
+    if (uName) uName.textContent = dn;
+    if (uAvatar) uAvatar.textContent = dn[0].toUpperCase();
+    if (barText) barText.textContent = '☁ Senkronize edildi';
+  } else {
+    if (btnSignin) btnSignin.style.display = 'inline-block';
+    if (userBar) userBar.style.display = 'none';
+    if (barText) barText.textContent = '☁ Verilerini buluta kaydet';
+  }
+}
+
+document.getElementById('btn-signin').addEventListener('click', function() {
+  fbAuth.signInWithRedirect(fbProvider);
+});
+document.getElementById('btn-signout').addEventListener('click', function() {
+  if (confirm('Çıkış yapmak istediğine emin misin?')) fbAuth.signOut();
+});
+
+// Handle redirect result FIRST, then set up auth state listener
+fbAuth.getRedirectResult().then(function(result) {
+  // Redirect handled — onAuthStateChanged will fire
+}).catch(function(e) {
+  console.warn('Redirect error:', e.message);
+});
+
+fbAuth.onAuthStateChanged(function(user) {
+  updateAuthUI(user);
+  if (user) {
+    currentUid = user.uid;
+    if (fsUnsub) fsUnsub();
+    fsUnsub = fbDb.collection('users').doc(currentUid).onSnapshot(function(snap) {
+      if (snap.exists) {
+        try {
+          var loaded = JSON.parse(snap.data().data);
+          Object.keys(loaded).forEach(function(k){ S[k] = loaded[k]; });
+          renderAll();
+        } catch(e) { console.error('Parse error:', e); }
+      } else {
+        // First login for this user — save current local data to cloud
+        cloudSave();
+      }
+    }, function(e) { console.error('Snapshot error:', e); });
+  } else {
+    currentUid = null;
+    if (fsUnsub) { fsUnsub(); fsUnsub = null; }
+  }
+});
+
+load();renderAll();
+</script>
+</body>
+</html>
