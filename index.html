@@ -763,7 +763,7 @@ function renderVisits(){
 var activeSemt=null;
 function addSemt(){var v=document.getElementById('semt-name-input').value.trim();if(!v)return;if(S.semtler.includes(v)){alert('Bu semt zaten var.');return;}S.semtler.push(v);document.getElementById('semt-name-input').value='';save();renderSemtManageList();renderSemt();}
 function deleteSemt(n){if(!confirm('"'+n+'" silinsin mi?'))return;S.semtler=S.semtler.filter(function(s){return s!==n});S.persons.forEach(function(p){if(p.semt===n)p.semt='';});if(activeSemt===n)activeSemt=null;save();renderSemtManageList();renderSemt();}
-function renderSemtManageList(){document.getElementById('semt-manage-list').innerHTML=S.semtler.length?S.semtler.map(function(s){var cnt=S.persons.filter(function(p){return p.semt===s}).length;return '<div class="r-item"><div class="r-body"><div class="r-title">'+esc(s)+'</div><div class="r-sub">'+cnt+' kişi</div></div><button class="btn danger sm" onclick="deleteSemt(\''+esc(s)+'\')">Sil</button></div>'}).join(''):'<div class="empty">Semt eklenmedi.</div>';}
+function renderSemtManageList(){document.getElementById('semt-manage-list').innerHTML=S.semtler.length?S.semtler.map(function(s){var cnt=S.persons.filter(function(p){return p.semt===s}).length;return '<div class="r-item"><div class="r-body"><div class="r-title">'+esc(s)+'</div><div class="r-sub">'+cnt+' kişi</div></div><button class="btn danger sm" onclick="deleteSemt('"+esc(s)+"')">Sil</button></div>'}).join(''):'<div class="empty">Semt eklenmedi.</div>';}
 function selectSemt(n){activeSemt=activeSemt===n?null:n;renderSemt();}
 function renderSemt(){
   if(!S.semtler.length){document.getElementById('semt-grid').innerHTML='<div class="empty" style="grid-column:span 2">Semt eklenmedi.</div>';document.getElementById('semt-detail-box').innerHTML='';return;}
@@ -771,7 +771,7 @@ function renderSemt(){
     var pp=S.persons.filter(function(p){return p.semt===s});
     var ov=pp.filter(function(p){return p.visitFreq>0&&dSince(p.lastVisitDate)>=p.visitFreq}).length;
     var oc=pp.filter(function(p){return dSince(p.lastCallDate)>=p.freq}).length;
-    return '<div class="semt-card'+(activeSemt===s?' active-semt':'')+'" onclick="selectSemt(\''+esc(s)+'\')">'
+    return '<div class="semt-card'+(activeSemt===s?' active-semt':'')+'" onclick="selectSemt('"+esc(s)+"')">'
       +'<div class="semt-urgency" style="background:'+(ov>0||oc>0?'var(--red)':pp.length>0?'var(--green)':'var(--border2)')+'"></div>'
       +'<div class="semt-name">'+esc(s)+'</div>'
       +'<div class="semt-count">'+pp.length+' kişi'+(ov?' · '+ov+' ziyaret':'')+( oc?' · '+oc+' arama':'')+'</div></div>';
@@ -782,7 +782,7 @@ function renderSemt(){
   var pp=S.persons.filter(function(p){return p.semt===activeSemt});
   if(!pp.length){box.innerHTML='<div class="semt-detail"><div class="empty">Bu semtte kişi yok.</div></div>';return;}
   var sorted=pp.slice().sort(function(a,b){return(b.visitFreq>0&&dSince(b.lastVisitDate)>=b.visitFreq?1:0)-(a.visitFreq>0&&dSince(a.lastVisitDate)>=a.visitFreq?1:0)});
-  var html='<div class="semt-detail"><div class="semt-detail-header"><div><div style="font-family:serif;font-size:16px;font-weight:600">📍 '+esc(activeSemt)+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">'+pp.length+' kişi</div></div><button class="btn primary sm" onclick="planVisitSemt(\''+esc(activeSemt)+'\')">Ziyaret planla</button></div>';
+  var html='<div class="semt-detail"><div class="semt-detail-header"><div><div style="font-family:serif;font-size:16px;font-weight:600">📍 '+esc(activeSemt)+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">'+pp.length+' kişi</div></div><button class="btn primary sm" onclick="planVisitSemt('"+esc(activeSemt)+"')">Ziyaret planla</button></div>';
   html+=sorted.map(function(p){
     var a=ac(S.persons.indexOf(p));var vd=dSince(p.lastVisitDate),cd=dSince(p.lastCallDate);
     var vo=p.visitFreq>0&&vd>=p.visitFreq,co=cd>=p.freq;
@@ -939,11 +939,17 @@ fbAuth.onAuthStateChanged(function(user) {
         try {
           var loaded = JSON.parse(snap.data().data);
           Object.keys(loaded).forEach(function(k){ S[k] = loaded[k]; });
+          // Recalculate counters to prevent duplicate IDs
+          if(S.persons.length) S.nPerson = Math.max.apply(null, S.persons.map(function(p){return p.id})) + 1;
+          if(S.reminders.length) S.nReminder = Math.max.apply(null, S.reminders.map(function(r){return r.id})) + 1;
+          if(S.visits.length) S.nVisit = Math.max.apply(null, S.visits.map(function(v){return v.id})) + 1;
+          if(S.islamicItems.length) S.nIslamic = Math.max.apply(null, S.islamicItems.map(function(i){return i.id})) + 1;
           renderAll();
         } catch(e) { console.error('Parse error:', e); }
       } else {
-        // First login for this user — save current local data to cloud
-        cloudSave();
+        // First login — only save if user has added their own data (not just examples)
+        var hasRealData = S.persons.some(function(p){ return p.id >= 5; });
+        if(hasRealData) cloudSave();
       }
     }, function(e) { console.error('Snapshot error:', e); });
   } else {
